@@ -161,10 +161,35 @@ async function exportData(){if(CLOUD){try{const ks=Object.keys(newFiles);
  const js=new Blob(['window.SITE='+JSON.stringify(D)+';'],{type:'text/javascript'});
  if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&!(await srvOk()))return toast('✖ Old server is running, so saving is blocked. Close it (Ctrl+C) and run:  python server.py',9000);
  if(await srvOk()){try{const up=async(path,b)=>{const r=await fetch('/__save?path='+encodeURIComponent(path),{method:'POST',body:b});if(!r.ok)throw new Error(await r.text())};await up('site-data.js',js);for(const k of Object.keys(newFiles))await up('images/'+k,newFiles[k].file);newFiles={};try{localStorage.removeItem('bj_draft')}catch(e){}$('#ex').classList.remove('dirty');render();toast('✅ Saved – refresh the website page to see it');return}catch(e){return toast('Could not save: '+(e.message||e))}}
+ if(/^https?:$/.test(location.protocol)&&!/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return hostedSave(js);
  if(window.showDirectoryPicker){try{const root=await getRoot();await wr(root,['site-data.js'],js);for(const k of Object.keys(newFiles))await wr(root,['images',...k.split('/')],newFiles[k].file);
    newFiles={};try{localStorage.removeItem('bj_draft')}catch(e){}$('#ex').classList.remove('dirty');render();toast('✅ Saved to your website folder – refresh index.html');return}
   catch(e){if(e.name==='AbortError')return toast('Cancelled');if(e.message==='NOINDEX')return toast('Please choose the website folder that contains index.html');}}
  dl('site-data.js',js);$('#ex').classList.remove('dirty');toast(Object.keys(newFiles).length?'Could not save to a folder – site-data.js was downloaded; please also download the photos zip':'Could not save to a folder – site-data.js was downloaded; replace it in your website folder')}
+
+/* ---- Vercel / hosted saving: commits to GitHub through /api/save, Vercel then redeploys ---- */
+async function shrinkImg(f){if(!/^image\/(jpeg|png|webp)$/.test(f.type)||f.size<400000)return f;try{const bm=await createImageBitmap(f),M=1600,s=Math.min(1,M/Math.max(bm.width,bm.height));if(s===1&&f.size<1500000)return f;const c=document.createElement('canvas');c.width=Math.round(bm.width*s);c.height=Math.round(bm.height*s);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);const b=await new Promise(r=>c.toBlob(r,f.type,.85));return b&&b.size<f.size?b:f}catch(e){return f}}
+const toB64=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(r.error);r.readAsDataURL(b)});
+async function hostedSave(js){
+ try{
+  const pr=await fetch('/api/ping',{cache:'no-store'}).then(r=>r.text()).catch(()=>'');
+  if(pr!=='ok')return toast('✖ Cloud saving is not set up. Add GITHUB_TOKEN, GITHUB_REPO and ADMIN_SAVE_KEY in Vercel, then redeploy (see VERCEL-SETUP.txt).',10000);
+  let key=ST.get('bj_savekey',1);
+  if(!key){key=prompt('Enter your ADMIN_SAVE_KEY (the secret you set in Vercel):');if(!key)return toast('Cancelled');}
+  toast('⏳ Saving to website… please wait',90000);
+  const post=async(files,msg)=>{const r=await fetch('/api/save',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':key},body:JSON.stringify({files,message:msg})});if(r.status===401){try{localStorage.removeItem('bj_savekey')}catch(e){}throw new Error('Wrong admin key – click Save again and re-enter it')}if(r.status===413)throw new Error('A photo is too large – please use a smaller photo');if(!r.ok)throw new Error(await r.text())};
+  const items=[];
+  for(const k of Object.keys(newFiles)){const b=await shrinkImg(newFiles[k].file);items.push({path:'images/'+k,content:await toB64(b)})}
+  const batches=[];let cur=[],sz=0;
+  for(const it of items){if(cur.length&&sz+it.content.length>3000000){batches.push(cur);cur=[];sz=0}cur.push(it);sz+=it.content.length}
+  if(cur.length)batches.push(cur);
+  for(const b of batches)await post(b,'Admin: add photos [skip ci]');
+  await post([{path:'site-data.js',content:await toB64(js)}],'Admin: update website content');
+  try{localStorage.setItem('bj_savekey',key)}catch(e){}
+  newFiles={};try{localStorage.removeItem('bj_draft')}catch(e){}$('#ex').classList.remove('dirty');render();
+  toast('✅ Saved! Vercel is redeploying – the website updates in about 1 minute (refresh then).',9000);
+ }catch(e){toast('Could not save: '+(e.message||e),9000)}
+}
 
 function openAdd(){$('#an').value='';$('#af').value='';$('#ap').hidden=true;$('#am').hidden=false;$('#an').focus()}
 $('#af').onchange=e=>{const f=e.target.files[0];if(f){$('#ap').src=URL.createObjectURL(f);$('#ap').hidden=false}};

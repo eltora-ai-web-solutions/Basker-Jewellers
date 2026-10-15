@@ -1,0 +1,28 @@
+SAVING FROM THE ADMIN ON VERCEL
+===============================
+Vercel cannot write files to its own disk, so on the live site the admin
+saves by committing your changes to GitHub. Vercel then redeploys by itself
+(about 1 minute). On your own computer (python server.py) nothing changes.
+
+ONE-TIME SETUP
+1. GitHub -> Settings -> Developer settings -> Personal access tokens ->
+   Fine-grained tokens -> Generate new token.
+     - Repository access: only your website repo
+     - Permissions: Contents = Read and write
+   Copy the token.
+2. Vercel -> your project -> Settings -> Environment Variables. Add:
+     GITHUB_TOKEN     = the token from step 1
+     GITHUB_REPO      = yourgithubname/your-repo-name
+     ADMIN_SAVE_KEY   = a long secret you choose (not your admin password)
+     GITHUB_BRANCH    = main            (only if your branch is not "main")
+     GITHUB_BASE_PATH = site            (only if index.html is inside a "site" folder in the repo)
+3. Make sure the "api" folder sits next to index.html (same level).
+4. Push to GitHub / Redeploy once so the variables are picked up.
+
+USING IT
+Open /admin.html, change things, click Save Changes. The first time it asks
+for ADMIN_SAVE_KEY (remembered in that browser). Wait ~1 minute, refresh.
+
+If your "api" folder is not found (404 on /api/ping), your Vercel Root
+Directory is probably different - put "api" inside the same folder that
+holds index.html.
