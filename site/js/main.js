@@ -21,7 +21,7 @@ window.__applyData=d=>{S=window.SITE=d;GAL=S.gallery||GAL;C=mkC();A=S.arrivals||
 function openCat(k){const c=C.find(x=>x[0]==k);$('#vt').textContent=c[1];$('#vg').innerHTML=(GAL[k]||[]).map(f=>`<img loading="lazy" src="${gp(k,f)}" onclick="lb(this.src)">`).join('');$('#view').classList.add('open');$('#view').scrollTop=0;document.body.style.overflow='hidden'}
 function closeCat(){$('#view').classList.remove('open');document.body.style.overflow=''}
 
-function openArr(){$('#vt').textContent='New Arrivals';$('#vg').innerHTML=A.map(a=>`<figure class="af"><img loading="lazy" src="${ip(a[2])}" alt="${a[0]}" onclick="lb(this.src)"><figcaption><b>${a[0]}</b><a href="https://wa.me/919443252381?text=${encodeURIComponent('Hi, I am interested in '+a[0])}" target="_blank">Enquire on WhatsApp →</a></figcaption></figure>`).join('');$('#view').classList.add('open');$('#view').scrollTop=0;document.body.style.overflow='hidden'}
+function openArr(){$('#vt').textContent='New Arrivals';$('#vg').innerHTML=A.map(a=>`<figure class="af"><img loading="lazy" src="${ip(a[2])}" alt="${a[0]}" onclick="lb(this.src)"><figcaption><b>${a[0]}</b><a href="https://wa.me/918667862422?text=${encodeURIComponent('Hi, I am interested in '+a[0])}" target="_blank">Enquire on WhatsApp →</a></figcaption></figure>`).join('');$('#view').classList.add('open');$('#view').scrollTop=0;document.body.style.overflow='hidden'}
 function lb(s){$('#lb img').src=s;$('#lb').classList.add('open')}
 $('#rg').textContent='₹ '+RATES.gold.toLocaleString('en-IN');$('#rs').textContent='₹ '+RATES.silver;
 
@@ -29,22 +29,27 @@ let rateTok=0;function runRates(){const my=++rateTok;const R=S.rates||{},fmt=()=
 man=()=>{const l=document.querySelector('#rates .lv');if(l)l.style.display='none';src('Updated: '+(R.updated||new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}))+' | Source: Baskar Jewellers')},
 chg=(id,now,prev)=>{const e=$(id);if(!e||!prev)return;const d=now-prev,p=d/prev*100;e.className='chg'+(d<0?' dn':'');e.textContent=(d<0?'↓ ':'↑ ')+Math.abs(d).toLocaleString('en-IN',{maximumFractionDigits:2})+' ('+Math.abs(p).toFixed(2)+'%)'};
 if(R.mode==='manual'){$('#rg').textContent='₹ '+(+R.gold||RATES.gold).toLocaleString('en-IN');$('#rs').textContent='₹ '+(+R.silver||RATES.silver);return man()}
-Promise.all(['XAU','XAG'].map(m=>fetch('https://api.gold-api.com/price/'+m).then(r=>r.json())).concat(fetch('https://open.er-api.com/v6/latest/USD').then(r=>r.json()))).then(([g,s,f])=>{if(my!==rateTok)return;
- const k=(g.price&&s.price&&f.rates&&f.rates.INR)?f.rates.INR/31.1035*(1+(R.premium??6)/100):0;if(!k)throw 0;
- const gold=Math.round(g.price*k*0.916),sil=Math.round(s.price*k*100)/100;
- $('#rg').textContent='₹ '+gold.toLocaleString('en-IN');$('#rs').textContent='₹ '+sil;
- src('Updated: '+fmt()+' | Source: Market API');
- try{const t=new Date().toDateString();let b=JSON.parse(localStorage.getItem('bj_rate_base')||'null');if(!b||!b.d){b={d:t,g:gold,s:sil}}else if(b.d!==t){b={d:t,g:gold,s:sil,pg:b.pg_cur??b.g,ps:b.ps_cur??b.s,pg_cur:gold,ps_cur:sil}}else{b.pg_cur=b.pg_cur??gold;b.ps_cur=b.ps_cur??sil}
-  localStorage.setItem('bj_rate_base',JSON.stringify(b));chg('#rgc',gold,b.pg);chg('#rsc',sil,b.ps)}catch(e){}
-}).catch(man)}runRates();
+const LC='https://www.livechennai.com/gold_silverrate.asp',okj=r=>{if(!r.ok)throw 0;return r.json()},
+ parseLC=h=>{const t=h.replace(/<(script|style)[\s\S]*?<\/\1>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' '),n=s=>+s.replace(/,/g,''),D='(\\d{2}/[A-Za-z]{3}/\\d{4})',
+  g=[...t.matchAll(new RegExp(D+' (\\d[\\d,]*) (\\d[\\d,]*) (\\d[\\d,]*) (\\d[\\d,]*)(?![\\d.,])','g'))],s=[...t.matchAll(new RegExp(D+' (\\d[\\d,]*\\.\\d{2}) (\\d[\\d,]*\\.\\d{2})','g'))],u=t.match(/Last Update Time:\s*(\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2}:\d{2} ?[AP]M)/);
+  if(!g.length||!s.length)throw 0;return{gold22:n(g[0][4]),prevGold22:g[1]?n(g[1][4]):0,silver:n(s[0][2]),prevSilver:s[1]?n(s[1][2]):0,updated:u?u[1]:''}},
+ viaProxy=u=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.text()}).then(parseLC),
+ srcs=[()=>fetch('/api/rates').then(okj),()=>fetch('/__rates').then(okj),()=>fetch('rates.php').then(okj),()=>viaProxy('https://api.allorigins.win/raw?url='+encodeURIComponent(LC)),()=>viaProxy('https://corsproxy.io/?'+encodeURIComponent(LC))];
+(async()=>{let d=null;for(const f of srcs){try{const r=await f();if(r&&r.gold22>0&&r.silver>0){d=r;break}}catch(e){}}
+ if(my!==rateTok)return;
+ if(d){try{localStorage.setItem('bj_rate_last',JSON.stringify(d))}catch(e){}}
+ else{try{d=JSON.parse(localStorage.getItem('bj_rate_last')||'null')}catch(e){}if(!d)return man()}
+ $('#rg').textContent='₹ '+d.gold22.toLocaleString('en-IN');$('#rs').textContent='₹ '+d.silver.toLocaleString('en-IN',{minimumFractionDigits:2});
+ src('Updated: '+(d.updated||fmt())+' | Source: LiveChennai');
+ chg('#rgc',d.gold22,d.prevGold22);chg('#rsc',d.silver,d.prevSilver)})()}runRates();setInterval(runRates,600000);
 $('#rb').onclick=()=>$('#rates').classList.toggle('open');$('#rx').onclick=()=>$('#rates').classList.remove('open');
 $('#mb').onclick=()=>$('#nav').classList.toggle('open');$('#nav').onclick=()=>$('#nav').classList.remove('open');
 const links=[...document.querySelectorAll('#nav a')];
 (()=>{const o=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)links.forEach(l=>l.classList.toggle('on',l.hash=='#'+e.target.id))}),{rootMargin:'-45% 0px -50% 0px'});document.querySelectorAll('section').forEach(s=>o.observe(s))})();
 
 function rArr2(){const h=$('#arr2');if(!h)return;const nA=Math.min(5,A.length),wA=268,R=[...Array(nA)].map((_,i)=>[(1536-(nA*wA+(nA-1)*14))/2+i*(wA+14),wA]);if(!nA){h.innerHTML='';return}
- h.innerHTML=(A.slice(0,5)).map((a,i)=>`<div class="a ac" style="left:${R[i][0]-1}px;top:604px;width:${R[i][1]+2}px;height:232px"><div class="ai"><img src="${ip(a[2])}" alt="${a[0]}"></div><span class="nw">New</span><svg class="hr" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"/></svg><div class="ab"><div class="nm">${a[0]}</div><button class="ct" aria-label="Enquire about ${a[0]}" onclick="location.href='https://wa.me/919443252381?text='+encodeURIComponent('Hi, I am interested in ${a[0]} ')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 4h2l2.2 11h10.6L20 7H6.2"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg></button></div></div>`).join('')}
-const wa=(f,t)=>f.addEventListener('submit',e=>{e.preventDefault();const L=[...new FormData(f).entries()].filter(([k,v])=>v&&v!=='on'&&(!(v instanceof File)||v.name)).map(([k,v])=>k+': '+(v instanceof File?v.name+' (please send this image on WhatsApp)':v));open('https://wa.me/919443252381?text='+encodeURIComponent(t+'\n'+L.join('\n')),'_blank')});
+ h.innerHTML=(A.slice(0,5)).map((a,i)=>`<div class="a ac" style="left:${R[i][0]-1}px;top:604px;width:${R[i][1]+2}px;height:232px"><div class="ai"><img src="${ip(a[2])}" alt="${a[0]}"></div><span class="nw">New</span><svg class="hr" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"/></svg><div class="ab"><div class="nm">${a[0]}</div><button class="ct" aria-label="Enquire about ${a[0]}" onclick="location.href='https://wa.me/918667862422?text='+encodeURIComponent('Hi, I am interested in ${a[0]} ')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 4h2l2.2 11h10.6L20 7H6.2"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg></button></div></div>`).join('')}
+const wa=(f,t)=>f.addEventListener('submit',e=>{e.preventDefault();const L=[...new FormData(f).entries()].filter(([k,v])=>v&&v!=='on'&&(!(v instanceof File)||v.name)).map(([k,v])=>k+': '+(v instanceof File?v.name+' (please send this image on WhatsApp)':v));open('https://wa.me/918667862422?text='+encodeURIComponent(t+'\n'+L.join('\n')),'_blank')});
 document.querySelectorAll('.up input[type=file]').forEach(i=>i.onchange=()=>{const n=i.parentNode.querySelector('span');if(i.files[0])n.textContent=i.files[0].name});
 wa($('#cform'),'Custom Jewellery Request');wa($('#eform'),'Enquiry');wa($('#cform2'),'Custom Jewellery Request');wa($('#eform2'),'Enquiry');
 

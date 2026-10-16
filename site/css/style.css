@@ -193,3 +193,6 @@ summary{list-style:none;display:flex;justify-content:space-between}summary::-web
 .pg .cdc .cb i{display:grid;place-items:center;width:36px;height:36px;margin:14px auto 0;border:1.5px solid #e8c777;border-radius:50%;color:#fff;font-style:normal;font-size:18px;background:radial-gradient(#3a2410,#1a0b05)}.pg .cdc:hover{box-shadow:0 0 0 2px #e8b24a,0 10px 24px #0006}
 .pg .cdc .cb{padding-top:6px}.pg .cdc .cb b{height:50px}.pg .cdc .cb i{margin-top:10px}.pg .ac .nm{white-space:normal;right:72px;top:14px;line-height:20px;font-size:16px;max-height:44px;overflow:hidden}
 html{overflow-y:scroll;overflow-x:hidden}
+
+.logo .logo-img{width:50px;height:50px;border-radius:50%;object-fit:cover}
+header .logo .logo-img{width:74px;height:74px}
